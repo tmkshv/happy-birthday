@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#faf4f1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Happy Birthday, Aisana</title>
+    <meta name="description" content="A soft birthday surprise for Aisana." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Outfit:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="confetti" aria-hidden="true"></canvas>
+
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-sky" aria-hidden="true">
+          <span class="blob blob-a"></span>
+          <span class="blob blob-b"></span>
+          <span class="blob blob-c"></span>
+        </div>
+
+        <div class="hero-copy">
+          <p class="eyebrow">for someone special</p>
+          <h1 class="brand">Aisana</h1>
+          <p class="headline">Happy Birthday</p>
+          <p class="support">
+            A soft little corner of the internet, made only for you today.
+          </p>
+          <div class="cta-row">
+            <a class="cta" href="#surprise">Continue</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="surprise" id="surprise">
+        <div class="section-inner">
+          <h2>Three soft wishes</h2>
+          <p class="lead">
+            Open each one. I’m not great with wishes — but I meant every word.
+          </p>
+
+          <div class="wish-stage" role="list">
+            <button class="wish-balloon coral" type="button" data-wish="0" aria-label="Open first wish">
+              <span class="balloon-body"></span>
+              <span class="balloon-string"></span>
+            </button>
+            <button class="wish-balloon sunshine" type="button" data-wish="1" aria-label="Open second wish">
+              <span class="balloon-body"></span>
+              <span class="balloon-string"></span>
+            </button>
+            <button class="wish-balloon aqua" type="button" data-wish="2" aria-label="Open third wish">
+              <span class="balloon-body"></span>
+              <span class="balloon-string"></span>
+            </button>
+          </div>
+
+          <p class="wish-text" id="wish-text" aria-live="polite">
+            Tap a balloon to reveal a wish.
+          </p>
+
+          <div class="cta-row reveal-later" id="to-proposal-wrap">
+            <a class="cta" href="#proposal">One more thing…</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="proposal" id="proposal">
+        <div class="section-inner proposal-panel" id="proposal-panel">
+          <h2 class="proposal-title">Let’s meet up</h2>
+          <p class="proposal-copy">
+            Don’t plan anything on <em>Monday</em>.
+            <br />
+            Just say yes — planning, vibes, and the whole plot twist are handled by a perfect guy like me. Haha.
+          </p>
+
+          <div class="answer-stage" id="answer-stage">
+            <button class="yes-btn" type="button" id="yes-btn">Yes</button>
+            <button class="no-btn" type="button" id="no-btn">No</button>
+          </div>
+
+          <div class="accepted" id="accepted" hidden>
+            <p class="accepted-title">She said yes.</p>
+            <p class="accepted-copy">
+              Monday is ours. The information about that day is gonna be sent to you soon…
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="music-dock" id="music-dock">
+      <audio id="bg-music" src="happy-birthday.wav" preload="auto"></audio>
+      <button type="button" class="music-mute" id="music-mute" data-level="high" aria-label="Mute background music" title="Mute">
+        <svg class="icon-high" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/>
+          <path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M18.2 6.2a8.5 8.5 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <svg class="icon-low" viewBox="0 0 24 24" aria-hidden="true" hidden>
+          <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/>
+          <path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <svg class="icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden>
+          <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/>
+          <path d="M22 9l-6 6M16 9l6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="music-slider-wrap">
+        <input
+          type="range"
+          id="music-volume"
+          class="music-volume"
+          min="0"
+          max="100"
+          value="60"
+          style="--vol: 60%"
+          aria-label="Music volume"
+        />
+      </div>
+      <span class="music-level" id="music-level" aria-hidden="true">60</span>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
