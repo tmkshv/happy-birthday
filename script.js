@@ -1,7 +1,7 @@
 const canvas = document.getElementById("confetti");
 const ctx = canvas.getContext("2d");
 const wishText = document.getElementById("wish-text");
-const wishButtons = document.querySelectorAll(".wish-balloon");
+const wishButtons = document.querySelectorAll(".wish-item");
 const toProposalWrap = document.getElementById("to-proposal-wrap");
 const proposalPanel = document.getElementById("proposal-panel");
 const answerStage = document.getElementById("answer-stage");
@@ -11,7 +11,7 @@ const accepted = document.getElementById("accepted");
 
 const wishes = [
   "Go be a great artist — no shame in that dream. Friends and family have your back, and honestly? I’m already saving you the #1 spot in my Spotify Wrapped.",
-  "And please — no more getting sick, especially that throat of yours. It’s got bigger plans than coughing this year. Haha.",
+  "And please — no more getting sick this year, okay? Especially that throat. We’ve got better things to do than rest and tea. Haha.",
   "And just a regular one — you deserve a year that treats you as kindly as you treat everyone else.",
 ];
 
@@ -138,31 +138,108 @@ let lastNoX = null;
 let lastNoY = null;
 const recentSpots = [];
 
+function getStageBounds() {
+  return {
+    width: answerStage.clientWidth,
+    height: answerStage.clientHeight,
+  };
+}
+
+function getNoButtonSize() {
+  return {
+    width: Math.ceil(noBtn.offsetWidth) || 104,
+    height: Math.ceil(noBtn.offsetHeight) || 48,
+  };
+}
+
+function clampNoPosition(x, y) {
+  const stage = getStageBounds();
+  const { width: btnW, height: btnH } = getNoButtonSize();
+  const pad = 10;
+  const maxX = Math.max(0, Math.floor(stage.width - btnW - pad));
+  const maxY = Math.max(0, Math.floor(stage.height - btnH - pad));
+  const minX = Math.min(pad, maxX);
+  const minY = Math.min(pad, maxY);
+
+  return {
+    x: Math.min(maxX, Math.max(minX, x)),
+    y: Math.min(maxY, Math.max(minY, y)),
+    btnW,
+    btnH,
+    pad,
+    stage,
+    maxX,
+    maxY,
+  };
+}
+
 function placeNoButton(x, y) {
-  noBtn.style.setProperty("--no-x", `${x}px`);
-  noBtn.style.setProperty("--no-y", `${y}px`);
-  lastNoX = x;
-  lastNoY = y;
-  recentSpots.push({ x, y });
+  const { x: clampedX, y: clampedY } = clampNoPosition(x, y);
+
+  noBtn.style.setProperty("--no-x", `${clampedX}px`);
+  noBtn.style.setProperty("--no-y", `${clampedY}px`);
+  lastNoX = clampedX;
+  lastNoY = clampedY;
+  recentSpots.push({ x: clampedX, y: clampedY });
   if (recentSpots.length > 6) recentSpots.shift();
 }
 
-function growYesButton() {
-  if (yesScale >= 2.5) return;
-  yesScale = Math.min(yesScale + 0.2, 2.5);
-  yesBtn.style.transition = "none";
-  yesBtn.style.setProperty("--yes-scale", String(yesScale));
-  const baseHeight = window.matchMedia("(max-width: 720px)").matches ? 260 : 280;
-  answerStage.style.height = `${baseHeight + (yesScale - 1) * 100}px`;
-  void yesBtn.offsetWidth;
-  requestAnimationFrame(() => {
-    yesBtn.style.transition = "";
-  });
+function isPhone() {
+  // Only treat real phones/touch-narrow screens as phone — not desktop windows
+  return window.matchMedia("(max-width: 720px) and (pointer: coarse)").matches;
 }
 
-function getYesSafeZone(stage) {
+function availableStageWidth() {
+  const styles = window.getComputedStyle(proposalPanel);
+  const padX =
+    (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+  return Math.max(200, Math.floor(proposalPanel.clientWidth - padX));
+}
+
+function applyYesScale(scale) {
+  yesScale = scale;
+  yesBtn.style.setProperty("--yes-scale", String(yesScale));
+  yesBtn.style.transform = `translate(-100%, -50%) scale(${yesScale})`;
+  yesBtn.style.fontSize = `${1 + (yesScale - 1) * 0.32}rem`;
+  yesBtn.style.minWidth = `${6.5 + (yesScale - 1) * 1.8}rem`;
+  yesBtn.style.padding = `${0.9 + (yesScale - 1) * 0.22}rem ${1.6 + (yesScale - 1) * 0.35}rem`;
+  const avail = availableStageWidth();
+  answerStage.style.width = `${Math.min(avail, 560 + (yesScale - 1) * 55)}px`;
+  answerStage.style.height = `${Math.min(360, 300 + (yesScale - 1) * 55)}px`;
+  void yesBtn.offsetWidth;
+}
+
+function yesFitsInStage(pad = 12) {
+  const stage = answerStage.getBoundingClientRect();
   const yes = yesBtn.getBoundingClientRect();
-  const clear = 52 + yesScale * 18;
+  return (
+    yes.left >= stage.left + pad &&
+    yes.right <= stage.right - pad &&
+    yes.top >= stage.top + pad &&
+    yes.bottom <= stage.bottom - pad
+  );
+}
+
+function growYesButton() {
+  if (isPhone()) return;
+  const maxScale = 1.75;
+  if (yesScale >= maxScale) return;
+
+  const next = Math.min(yesScale + 0.16, maxScale);
+  applyYesScale(next);
+
+  // Dial back if Yes would leave the white stage
+  while (yesScale > 1 && !yesFitsInStage()) {
+    applyYesScale(Math.max(1, yesScale - 0.08));
+  }
+}
+
+function getYesSafeZone(stageRect) {
+  // Measure after layout so scaled Yes size is accurate
+  void yesBtn.offsetWidth;
+  const yes = yesBtn.getBoundingClientRect();
+  const stage = stageRect || answerStage.getBoundingClientRect();
+  const clear = Math.min(36, 18 + yesScale * 10);
 
   return {
     left: yes.left - stage.left - clear,
@@ -172,110 +249,153 @@ function getYesSafeZone(stage) {
   };
 }
 
-function isAwayFromYes(x, y, btnW, btnH, zone) {
-  return (
-    x + btnW <= zone.left ||
-    x >= zone.right ||
-    y + btnH <= zone.top ||
-    y >= zone.bottom
+function rectsOverlap(ax, ay, aw, ah, zone) {
+  return !(
+    ax + aw <= zone.left ||
+    ax >= zone.right ||
+    ay + ah <= zone.top ||
+    ay >= zone.bottom
   );
 }
 
+function isValidNoSpot(x, y, btnW, btnH, stage, zone, pad) {
+  const maxX = Math.floor(stage.width - btnW - pad);
+  const maxY = Math.floor(stage.height - btnH - pad);
+  if (x < pad || y < pad || x > maxX || y > maxY) return false;
+  if (x < 0 || y < 0) return false;
+  if (rectsOverlap(x, y, btnW, btnH, zone)) return false;
+  return true;
+}
+
 function wasRecentlyUsed(x, y) {
-  return recentSpots.some((spot) => Math.hypot(spot.x - x, spot.y - y) < 70);
+  return recentSpots.some((spot) => Math.hypot(spot.x - x, spot.y - y) < 55);
 }
 
 function collectSafeSpots(stage, btnW, btnH, zone, pad) {
-  const maxX = Math.max(pad, stage.width - btnW - pad);
-  const maxY = Math.max(pad, stage.height - btnH - pad);
+  const maxX = Math.max(0, Math.floor(stage.width - btnW - pad));
+  const maxY = Math.max(0, Math.floor(stage.height - btnH - pad));
+  const minX = Math.min(pad, maxX);
+  const minY = Math.min(pad, maxY);
   const spots = [];
+  const rangeX = Math.max(0, maxX - minX);
+  const rangeY = Math.max(0, maxY - minY);
 
-  // Scatter across the whole play area for variety
-  for (let i = 0; i < 80; i += 1) {
-    const x = pad + Math.random() * Math.max(0, maxX - pad);
-    const y = pad + Math.random() * Math.max(0, maxY - pad);
-    if (isAwayFromYes(x, y, btnW, btnH, zone) && !wasRecentlyUsed(x, y)) {
+  for (let i = 0; i < 120; i += 1) {
+    const x = minX + Math.random() * rangeX;
+    const y = minY + Math.random() * rangeY;
+    if (isValidNoSpot(x, y, btnW, btnH, stage, zone, pad) && !wasRecentlyUsed(x, y)) {
       spots.push({ x, y });
     }
   }
 
-  // Extra samples in different bands: top, bottom, left, right, mid
-  const bands = [
-    () => ({ x: pad + Math.random() * Math.max(0, maxX - pad), y: pad + Math.random() * Math.max(20, maxY * 0.28) }),
-    () => ({ x: pad + Math.random() * Math.max(0, maxX - pad), y: maxY * 0.55 + Math.random() * Math.max(20, maxY * 0.4) }),
-    () => ({ x: pad + Math.random() * Math.max(20, maxX * 0.3), y: pad + Math.random() * Math.max(0, maxY - pad) }),
-    () => ({ x: maxX * 0.55 + Math.random() * Math.max(20, maxX * 0.4), y: pad + Math.random() * Math.max(0, maxY - pad) }),
-    () => ({ x: maxX * 0.25 + Math.random() * Math.max(20, maxX * 0.5), y: maxY * 0.2 + Math.random() * Math.max(20, maxY * 0.55) }),
+  const edges = [
+    [minX, minY],
+    [maxX, minY],
+    [minX, maxY],
+    [maxX, maxY],
+    [minX, minY + rangeY * 0.5],
+    [maxX, minY + rangeY * 0.5],
+    [minX + rangeX * 0.5, minY],
+    [minX + rangeX * 0.5, maxY],
+    [minX + rangeX * 0.25, minY],
+    [minX + rangeX * 0.75, minY],
+    [minX + rangeX * 0.25, maxY],
+    [minX + rangeX * 0.75, maxY],
+    [minX, minY + rangeY * 0.25],
+    [minX, minY + rangeY * 0.75],
+    [maxX, minY + rangeY * 0.25],
+    [maxX, minY + rangeY * 0.75],
   ];
 
-  bands.forEach((make) => {
-    for (let i = 0; i < 12; i += 1) {
-      const spot = make();
-      const x = Math.min(maxX, Math.max(pad, spot.x));
-      const y = Math.min(maxY, Math.max(pad, spot.y));
-      if (isAwayFromYes(x, y, btnW, btnH, zone) && !wasRecentlyUsed(x, y)) {
-        spots.push({ x, y });
-      }
+  edges.forEach(([x, y]) => {
+    if (isValidNoSpot(x, y, btnW, btnH, stage, zone, pad)) {
+      spots.push({ x, y });
     }
   });
 
   return spots;
 }
 
-function pickVariedSpot(spots, stage, btnW, btnH, clientX, clientY) {
+function pickVariedSpot(spots, stageRect, btnW, btnH, clientX, clientY) {
   const ranked = spots
     .map((spot) => {
-      const cx = stage.left + spot.x + btnW / 2;
-      const cy = stage.top + spot.y + btnH / 2;
+      const cx = stageRect.left + spot.x + btnW / 2;
+      const cy = stageRect.top + spot.y + btnH / 2;
       const fromCursor = Math.hypot(cx - clientX, cy - clientY);
       const fromLast =
-        lastNoX == null ? 160 : Math.hypot(spot.x - lastNoX, spot.y - lastNoY);
+        lastNoX == null ? 180 : Math.hypot(spot.x - lastNoX, spot.y - lastNoY);
       return { spot, fromCursor, fromLast };
     })
-    // Prefer smooth mid-range hops, not huge teleports
-    .filter(
-      (item) =>
-        item.fromCursor > 70 &&
-        item.fromLast > 50 &&
-        item.fromLast < 240
-    )
-    .sort((a, b) => Math.abs(a.fromLast - 140) - Math.abs(b.fromLast - 140));
+    .filter((item) => item.fromCursor > 70 && item.fromLast > 45)
+    .sort((a, b) => b.fromCursor - a.fromCursor || b.fromLast - a.fromLast);
 
-  const pool = ranked.length
-    ? ranked
-    : spots
-        .map((spot) => {
-          const fromLast =
-            lastNoX == null ? 160 : Math.hypot(spot.x - lastNoX, spot.y - lastNoY);
-          return { spot, fromLast };
-        })
-        .sort((a, b) => a.fromLast - b.fromLast);
-
-  const top = pool.slice(0, Math.min(10, pool.length));
+  const pool = ranked.length ? ranked : spots.map((spot) => ({ spot }));
+  const top = pool.slice(0, Math.min(14, pool.length));
   return top[Math.floor(Math.random() * top.length)].spot;
 }
 
 function moveNoAway(clientX, clientY, shouldGrow = true) {
-  if (shouldGrow) growYesButton();
+  if (shouldGrow && !isPhone()) growYesButton();
 
-  const stage = answerStage.getBoundingClientRect();
-  const btnW = noBtn.offsetWidth;
-  const btnH = noBtn.offsetHeight;
+  // Settle layout after Yes/stage resize before measuring
+  void answerStage.offsetWidth;
+
+  const stageSize = getStageBounds();
+  const stageRect = answerStage.getBoundingClientRect();
+  const { width: btnW, height: btnH } = getNoButtonSize();
   const pad = 10;
-  const zone = getYesSafeZone(stage);
-  let spots = collectSafeSpots(stage, btnW, btnH, zone, pad);
+  const zone = getYesSafeZone(stageRect);
+  let spots = collectSafeSpots(stageSize, btnW, btnH, zone, pad);
 
   if (!spots.length) {
-    for (let i = 0; i < 80; i += 1) {
-      const x = pad + Math.random() * Math.max(0, stage.width - btnW - pad * 2);
-      const y = pad + Math.random() * Math.max(0, stage.height - btnH - pad * 2);
-      if (isAwayFromYes(x, y, btnW, btnH, zone)) spots.push({ x, y });
+    const maxX = Math.max(0, Math.floor(stageSize.width - btnW - pad));
+    const maxY = Math.max(0, Math.floor(stageSize.height - btnH - pad));
+    const minX = Math.min(pad, maxX);
+    const minY = Math.min(pad, maxY);
+    for (let i = 0; i < 150; i += 1) {
+      const x = minX + Math.random() * Math.max(0, maxX - minX);
+      const y = minY + Math.random() * Math.max(0, maxY - minY);
+      if (isValidNoSpot(x, y, btnW, btnH, stageSize, zone, pad)) spots.push({ x, y });
     }
   }
 
-  if (!spots.length) return;
+  if (!spots.length) {
+    // Prefer edge midpoints that still clear Yes — never leave the stage
+    const maxX = Math.max(0, Math.floor(stageSize.width - btnW - pad));
+    const maxY = Math.max(0, Math.floor(stageSize.height - btnH - pad));
+    const minX = Math.min(pad, maxX);
+    const minY = Math.min(pad, maxY);
+    const fallbacks = [
+      { x: minX, y: minY },
+      { x: maxX, y: minY },
+      { x: minX, y: maxY },
+      { x: maxX, y: maxY },
+      { x: minX, y: (minY + maxY) / 2 },
+      { x: maxX, y: (minY + maxY) / 2 },
+      { x: (minX + maxX) / 2, y: minY },
+      { x: (minX + maxX) / 2, y: maxY },
+    ].filter((spot) => isValidNoSpot(spot.x, spot.y, btnW, btnH, stageSize, zone, pad));
 
-  const pick = pickVariedSpot(spots, stage, btnW, btnH, clientX, clientY);
+    if (fallbacks.length) {
+      fallbacks.sort((a, b) => {
+        const da = Math.hypot(stageRect.left + a.x - clientX, stageRect.top + a.y - clientY);
+        const db = Math.hypot(stageRect.left + b.x - clientX, stageRect.top + b.y - clientY);
+        return db - da;
+      });
+      placeNoButton(fallbacks[0].x, fallbacks[0].y);
+      return;
+    }
+
+    // Absolute last resort: keep previous valid spot, still clamped inside
+    if (lastNoX != null) {
+      placeNoButton(lastNoX, lastNoY);
+    } else {
+      placeNoButton(maxX, minY);
+    }
+    return;
+  }
+
+  const pick = pickVariedSpot(spots, stageRect, btnW, btnH, clientX, clientY);
   placeNoButton(pick.x, pick.y);
 }
 
@@ -285,14 +405,17 @@ function initNoButton() {
   lastNoY = null;
   recentSpots.length = 0;
   yesBtn.style.setProperty("--yes-scale", "1");
+  yesBtn.style.transform = "";
+  yesBtn.style.fontSize = "";
+  yesBtn.style.minWidth = "";
+  yesBtn.style.padding = "";
+  answerStage.style.width = "";
   answerStage.style.height = "";
-  const stage = answerStage.getBoundingClientRect();
-  const btnW = noBtn.offsetWidth;
-  const btnH = noBtn.offsetHeight;
-  const styles = getComputedStyle(answerStage);
-  const gap = Number.parseFloat(styles.getPropertyValue("--pair-gap")) || 44;
+  void answerStage.offsetWidth;
+  const stage = getStageBounds();
+  const { height: btnH } = getNoButtonSize();
   noBtn.style.transition = "none";
-  placeNoButton(stage.width / 2 + gap / 2, (stage.height - btnH) / 2);
+  placeNoButton(stage.width / 2 + 16, (stage.height - btnH) / 2);
   void noBtn.offsetWidth;
   noBtn.style.transition = "";
 }
@@ -302,10 +425,10 @@ function onNoEscape(event) {
   if (noEscapeLocked || proposalPanel.classList.contains("done")) return;
   noEscapeLocked = true;
   const point = event.touches?.[0] || event;
-  moveNoAway(point.clientX, point.clientY, true);
+  moveNoAway(point.clientX, point.clientY, !isPhone());
   window.setTimeout(() => {
     noEscapeLocked = false;
-  }, 320);
+  }, isPhone() ? 280 : 180);
 }
 
 function onNoChase(event) {
@@ -315,15 +438,15 @@ function onNoChase(event) {
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
   const dist = Math.hypot(point.clientX - cx, point.clientY - cy);
-  const isPhone = window.matchMedia("(max-width: 720px)").matches;
-  const near = isPhone ? 110 : 85;
+  const phone = isPhone();
+  const near = phone ? 110 : 100;
 
   if (dist < near) {
     noEscapeLocked = true;
-    moveNoAway(point.clientX, point.clientY, true);
+    moveNoAway(point.clientX, point.clientY, !phone);
     window.setTimeout(() => {
       noEscapeLocked = false;
-    }, isPhone ? 280 : 320);
+    }, phone ? 280 : 160);
   }
 }
 
@@ -338,7 +461,6 @@ noBtn.addEventListener("click", (event) => {
 answerStage.addEventListener("mousemove", onNoChase);
 answerStage.addEventListener("touchmove", onNoChase, { passive: false });
 
-// Phone-friendly: also chase when finger moves across the proposal panel
 proposalPanel.addEventListener("touchmove", (event) => {
   if (proposalPanel.classList.contains("done")) return;
   onNoChase(event);
@@ -358,12 +480,11 @@ yesBtn.addEventListener("pointerdown", (event) => {
 
 window.addEventListener("resize", () => {
   resize();
-  if (!proposalPanel.classList.contains("done")) {
+  // Don't reset Yes growth mid-game on accidental resize
+  if (!proposalPanel.classList.contains("done") && yesScale <= 1) {
     initNoButton();
   }
 });
-
-const isPhone = () => window.matchMedia("(max-width: 720px)").matches;
 
 resize();
 initNoButton();
