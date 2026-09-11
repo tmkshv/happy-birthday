@@ -412,6 +412,18 @@ function initNoButton() {
   answerStage.style.width = "";
   answerStage.style.height = "";
   void answerStage.offsetWidth;
+
+  // Phones: static Yes/No — no chase (no cursor)
+  if (isPhone()) {
+    noBtn.style.transition = "none";
+    noBtn.style.removeProperty("--no-x");
+    noBtn.style.removeProperty("--no-y");
+    noBtn.style.transform = "";
+    void noBtn.offsetWidth;
+    noBtn.style.transition = "";
+    return;
+  }
+
   const stage = getStageBounds();
   const { height: btnH } = getNoButtonSize();
   noBtn.style.transition = "none";
@@ -421,32 +433,32 @@ function initNoButton() {
 }
 
 function onNoEscape(event) {
+  if (isPhone()) return;
   event.preventDefault();
   if (noEscapeLocked || proposalPanel.classList.contains("done")) return;
   noEscapeLocked = true;
   const point = event.touches?.[0] || event;
-  moveNoAway(point.clientX, point.clientY, !isPhone());
+  moveNoAway(point.clientX, point.clientY, true);
   window.setTimeout(() => {
     noEscapeLocked = false;
-  }, isPhone() ? 280 : 180);
+  }, 180);
 }
 
 function onNoChase(event) {
+  if (isPhone()) return;
   if (proposalPanel.classList.contains("done") || noEscapeLocked) return;
   const point = event.touches?.[0] || event;
   const rect = noBtn.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
   const dist = Math.hypot(point.clientX - cx, point.clientY - cy);
-  const phone = isPhone();
-  const near = phone ? 110 : 100;
 
-  if (dist < near) {
+  if (dist < 100) {
     noEscapeLocked = true;
-    moveNoAway(point.clientX, point.clientY, !phone);
+    moveNoAway(point.clientX, point.clientY, true);
     window.setTimeout(() => {
       noEscapeLocked = false;
-    }, phone ? 280 : 160);
+    }, 160);
   }
 }
 
@@ -462,7 +474,7 @@ answerStage.addEventListener("mousemove", onNoChase);
 answerStage.addEventListener("touchmove", onNoChase, { passive: false });
 
 proposalPanel.addEventListener("touchmove", (event) => {
-  if (proposalPanel.classList.contains("done")) return;
+  if (isPhone() || proposalPanel.classList.contains("done")) return;
   onNoChase(event);
 }, { passive: false });
 
