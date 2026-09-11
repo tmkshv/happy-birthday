@@ -1,13 +1,19 @@
-# Happy Birthday, Aisana
+# Happy Birthday
 
-A playful birthday website for Aisana.
+A playful birthday website for a special someone.
 
 ## Open it
 
-Double-click `index.html`, or from this folder run:
+From this folder, open the site in your browser:
 
 ```bash
 open index.html
 ```
 
-No build step or install needed.
+Or double-click `index.html`.
+
+No build step or install is required — the project is plain HTML, CSS, and JavaScript.
+
+## Deploy
+
+Zip the site files (`index.html`, `styles.css`, `script.js`, `happy-birthday.wav`, and this README) and upload them to a static host such as Netlify Drop.
